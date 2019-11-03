@@ -1,0 +1,18 @@
+[common]
+default_manifest_digest = "sha1"
+max_upload_mib = 1024
+run_dir = "."
+
+[cos]
+secret_id = "SECRET_ID"
+secret_key = "SECRET_KEY"
+region = "ap-chengdu"
+
+[backups.nextcloud]
+local_path = "."
+excludes = []
+exclude_hidden = true
+cos_bucket = "BUCKET"
+cos_path = ""
+archive.compression = { min_size = 1048576 }
+archive.encryption = { public_key = "PUBKEY_FILE" }
