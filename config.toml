@@ -1,5 +1,4 @@
 [common]
-default_manifest_digest = "sha1"
 max_upload_mib = 1024
 run_dir = "."
 

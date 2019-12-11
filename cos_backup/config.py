@@ -20,7 +20,6 @@ class Config:
 
 class CommonConfig:
     def __init__(self, d):
-        self.default_manifest_digest = d.get('default_manifest_digest', 'sha1')
         self.max_upload_mib = d.get('max_upload_mib', 1024)
         self.run_dir = pathlib.Path(d.get('run_dir', '.'))
 

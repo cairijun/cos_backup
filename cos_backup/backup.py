@@ -1,15 +1,14 @@
 import fnmatch
-import tempfile
-import hashlib
 import logging
 import os
 import stat
+import tempfile
 
 from qcloud_cos import CosS3Client, CosServiceError
 
-from .config import BackupConfig, CommonConfig
-from .manifest import FileMeta, Manifest
 from .archive import Archive
+from .config import BackupConfig, CommonConfig
+from .manifest import FileMeta, Manifest, hash_file
 
 
 class UploadSetTooLarge(RuntimeError):
@@ -137,10 +136,11 @@ class Backup:
             return True
         if st.st_mtime == file_meta.st_mtime:
             return False
-        digest_hex = self._digest_file(
-            self._backup_config.local_path.joinpath(rel_path),
-            file_meta.digest_type)
-        return digest_hex != file_meta.digest_hex
+        full_path = self._backup_config.local_path.joinpath(rel_path)
+        with open(full_path, 'rb') as fobj:
+            blake2b_hash, _ = hash_file(fobj, file_meta.blake2b_salt,
+                                        len(file_meta.blake2b_hash) >> 1)
+            return blake2b_hash != file_meta.blake2b_hash
 
     def _upload_file(self, rel_path):
         local_path = self._backup_config.local_path.joinpath(rel_path)
@@ -150,7 +150,7 @@ class Backup:
             return self._cos_cli.upload_file(
                 Bucket=self._backup_config.cos_bucket,
                 Key=cos_key,
-                LocalFilePath=path,
+                LocalFilePath=str(path),
                 **self._extra_upload_args)
 
         if self._archive:
@@ -176,24 +176,12 @@ class Backup:
         return str(path)
 
     def _make_file_meta(self, rel_path, st, etag):
-        digest_type = self._common_config.default_manifest_digest
-        digest_hex = self._digest_file(
-            self._backup_config.local_path.joinpath(rel_path), digest_type)
+        full_path = self._backup_config.local_path.joinpath(rel_path)
+        with open(full_path, 'rb') as fobj:
+            blake2b_hash, blake2b_salt = hash_file(fobj)
         return FileMeta(rel_path=str(rel_path),
                         size=st.st_size,
                         st_mtime=st.st_mtime,
-                        digest_type=digest_type,
-                        digest_hex=digest_hex,
+                        blake2b_hash=blake2b_hash,
+                        blake2b_salt=blake2b_salt,
                         etag=etag)
-
-    @staticmethod
-    def _digest_file(path, digest_type):
-        MAX_BUFFER = 1024 * 1024
-        h = hashlib.new(digest_type)
-        with open(path, 'rb') as fobj:
-            while True:
-                buf = fobj.read1(MAX_BUFFER)
-                if not buf:
-                    break
-                h.update(buf)
-        return h.hexdigest()

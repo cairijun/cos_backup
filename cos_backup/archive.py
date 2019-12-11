@@ -336,7 +336,8 @@ class Archive:
     @staticmethod
     def _get_size_till_eof(fobj: io.IOBase) -> int:
         start = fobj.tell()
-        end = fobj.seek(0, io.SEEK_END)
+        fobj.seek(0, io.SEEK_END)
+        end = fobj.tell()
         fobj.seek(start)
         return end - start
 

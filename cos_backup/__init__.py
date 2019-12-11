@@ -7,6 +7,7 @@ from qcloud_cos import CosConfig, CosS3Client
 from .archive import Archive, MasterKey
 from .backup import Backup
 from .config import Config
+from .manifest import Manifest
 
 
 def gen_master_key(argv):
@@ -45,7 +46,7 @@ def unarchive(argv):
             fobj.write(chunk)
 
 
-def backup(argv):
+def run_backup(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', required=True, help='config file')
     parser.add_argument('-f', '--force', help='forcibly the given upload task')
@@ -68,8 +69,20 @@ def backup(argv):
         Backup(run_dir, config.common, cfg, cos_cli, name == args.force).run()
 
 
+def migrate_manifest(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i',
+                        '--input',
+                        required=True,
+                        help='the manifest file')
+    parser.add_argument('-b', '--base', required=True, help='the base path')
+    args = parser.parse_args(argv)
+    Manifest.migrate(args.input, args.base)
+
+
 def usage():
-    print('{} (backup|gen_master_key|unarchive) [ARGS...]', sys.argv[0])
+    print('{} (backup|gen_master_key|unarchive|migrate_manifest) [ARGS...]'.
+          format(sys.argv[0]))
 
 
 def main():
@@ -82,7 +95,9 @@ def main():
         elif cmd == 'unarchive':
             unarchive(argv)
         elif cmd == 'backup':
-            backup(argv)
+            run_backup(argv)
+        elif cmd == 'migrate_manifest':
+            migrate_manifest(argv)
         else:
             print('Invalid command:', cmd)
             usage()
